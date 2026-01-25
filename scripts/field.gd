@@ -16,6 +16,12 @@ const END_ZONE_HOME_COLOR := Color(0.6, 0.1, 0.1)  # Dark red
 const END_ZONE_AWAY_COLOR := Color(0.1, 0.1, 0.6)  # Dark blue
 const LOS_COLOR := Color(0.2, 0.6, 1.0, 0.8)  # Blue line of scrimmage
 const FIRST_DOWN_COLOR := Color(1.0, 0.9, 0.0, 0.8)  # Yellow first down marker
+const GOAL_POST_COLOR := Color(1.0, 0.9, 0.0, 1.0)  # Yellow goal posts
+
+# Goal post positions (centered, NFL-style 18.5 feet apart scaled down)
+const GOAL_POST_LEFT_X: float = FIELD_WIDTH / 2.0 - 40.0
+const GOAL_POST_RIGHT_X: float = FIELD_WIDTH / 2.0 + 40.0
+const GOAL_POST_HEIGHT: float = 30.0
 
 # Game state reference
 var _game_manager: GameManager = null
@@ -45,6 +51,7 @@ func _draw() -> void:
 	_draw_end_zones()
 	_draw_yard_lines()
 	_draw_scrimmage_lines()
+	_draw_goal_posts()
 	_draw_boundary()
 
 
@@ -122,3 +129,42 @@ func y_to_yard(y: float) -> int:
 	var playing_field_height := FIELD_HEIGHT - 2 * END_ZONE_DEPTH
 	var yard := ((y - END_ZONE_DEPTH) / playing_field_height) * 100.0
 	return clampi(int(yard), 0, 100)
+
+
+func _draw_goal_posts() -> void:
+	var line_width := 3.0
+
+	# Away end zone goal posts (top)
+	var away_goal_y := END_ZONE_DEPTH / 2.0
+	# Crossbar
+	draw_line(Vector2(GOAL_POST_LEFT_X, away_goal_y), Vector2(GOAL_POST_RIGHT_X, away_goal_y), GOAL_POST_COLOR, line_width)
+	# Left upright (going up/into screen, represented as short line)
+	draw_line(Vector2(GOAL_POST_LEFT_X, away_goal_y), Vector2(GOAL_POST_LEFT_X, away_goal_y - GOAL_POST_HEIGHT), GOAL_POST_COLOR, line_width)
+	# Right upright
+	draw_line(Vector2(GOAL_POST_RIGHT_X, away_goal_y), Vector2(GOAL_POST_RIGHT_X, away_goal_y - GOAL_POST_HEIGHT), GOAL_POST_COLOR, line_width)
+
+	# Home end zone goal posts (bottom)
+	var home_goal_y := FIELD_HEIGHT - END_ZONE_DEPTH / 2.0
+	# Crossbar
+	draw_line(Vector2(GOAL_POST_LEFT_X, home_goal_y), Vector2(GOAL_POST_RIGHT_X, home_goal_y), GOAL_POST_COLOR, line_width)
+	# Left upright
+	draw_line(Vector2(GOAL_POST_LEFT_X, home_goal_y), Vector2(GOAL_POST_LEFT_X, home_goal_y + GOAL_POST_HEIGHT), GOAL_POST_COLOR, line_width)
+	# Right upright
+	draw_line(Vector2(GOAL_POST_RIGHT_X, home_goal_y), Vector2(GOAL_POST_RIGHT_X, home_goal_y + GOAL_POST_HEIGHT), GOAL_POST_COLOR, line_width)
+
+
+## Get goal post info for a given end zone (for field goal detection).
+## Returns a dictionary with goal_y, left_x, right_x.
+func get_goal_post_info(home_end_zone: bool) -> Dictionary:
+	if home_end_zone:
+		return {
+			"goal_y": FIELD_HEIGHT - END_ZONE_DEPTH,
+			"left_x": GOAL_POST_LEFT_X,
+			"right_x": GOAL_POST_RIGHT_X
+		}
+	else:
+		return {
+			"goal_y": END_ZONE_DEPTH,
+			"left_x": GOAL_POST_LEFT_X,
+			"right_x": GOAL_POST_RIGHT_X
+		}

@@ -157,3 +157,14 @@ func adjust_direction(angle_delta: float) -> void:
 ## Set whether this player is selected (shows selection ring)
 func set_selected(selected: bool) -> void:
 	_selection_ring.visible = selected
+
+
+## Check if this player is eligible to catch a pass.
+## Eligible: RECEIVER, RUNNING_BACK, QUARTERBACK (but not the one who threw)
+func is_eligible_receiver() -> bool:
+	return role in [Role.RECEIVER, Role.RUNNING_BACK, Role.QUARTERBACK]
+
+
+## Check if this player is a quarterback.
+func is_quarterback() -> bool:
+	return role == Role.QUARTERBACK

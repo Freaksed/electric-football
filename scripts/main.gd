@@ -2,6 +2,7 @@ extends Node2D
 ## Main scene controller - handles input and debug UI.
 
 const FormationScript := preload("res://scripts/formation.gd")
+const BallScene := preload("res://scenes/ball.tscn")
 
 @onready var _vibration: Node = get_node("/root/VibrationController")
 @onready var _game_manager: GameManager = $GameManager
@@ -27,6 +28,16 @@ var _selected_player: PlayerFigure = null
 var _is_rotating: bool = false  # Right-click drag to rotate selected player
 var _is_dragging: bool = false  # Left-click drag to move selected player
 var _drag_offset: Vector2 = Vector2.ZERO
+
+# Ball and passing (using Node for load-order compatibility)
+var _ball: Node = null
+var _is_aiming: bool = false
+var _aiming_qb: PlayerFigure = null
+var _aim_indicator: Line2D = null
+
+# Kicking
+var _kick_mode: bool = false
+var _kick_position: Vector2 = Vector2.ZERO
 
 # Formation management
 var _current_formation_slot: int = 1
@@ -62,6 +73,18 @@ func _ready() -> void:
 			"base_direction": player.base_direction
 		}
 
+	# Create and add the ball
+	_ball = BallScene.instantiate()
+	add_child(_ball)
+	_ball.reset()
+
+	# Create aim indicator (line from QB to target)
+	_aim_indicator = Line2D.new()
+	_aim_indicator.width = 3.0
+	_aim_indicator.default_color = Color(1.0, 0.5, 0.0, 0.8)  # Orange
+	_aim_indicator.visible = false
+	add_child(_aim_indicator)
+
 	# Connect UI signals
 	_frequency_slider.value_changed.connect(_on_frequency_changed)
 	_amplitude_slider.value_changed.connect(_on_amplitude_changed)
@@ -82,6 +105,10 @@ func _ready() -> void:
 		_game_manager.phase_changed.connect(_on_phase_changed)
 		_game_manager.play_started.connect(_on_play_started)
 		_game_manager.play_ended.connect(_on_play_ended)
+		_game_manager.pass_complete.connect(_on_pass_complete)
+		_game_manager.pass_incomplete.connect(_on_pass_incomplete)
+		_game_manager.pass_intercepted.connect(_on_pass_intercepted)
+		_game_manager.set_ball(_ball)
 
 	_update_ui()
 	_update_scrimmage_ui()
@@ -96,7 +123,12 @@ func _input(event: InputEvent) -> void:
 		if event.keycode == KEY_R:
 			_reset_players()
 		if event.keycode == KEY_ESCAPE:
-			_select_player(null)
+			if _is_aiming:
+				_cancel_aim()
+			elif _kick_mode:
+				_cancel_kick_mode()
+			else:
+				_select_player(null)
 		if event.keycode == KEY_Q:
 			get_tree().quit()
 		# Move line of scrimmage with arrow keys (only when not playing)
@@ -104,6 +136,10 @@ func _input(event: InputEvent) -> void:
 			_game_manager.line_of_scrimmage -= 5
 		if event.keycode == KEY_DOWN and _game_manager.can_edit_players():
 			_game_manager.line_of_scrimmage += 5
+
+		# K to enter kick mode (pre-snap only)
+		if event.keycode == KEY_K and _game_manager.current_phase == GameManager.GamePhase.PRE_SNAP:
+			_enter_kick_mode()
 
 		# Formation save/load
 		if event.keycode == KEY_F5 and _game_manager.can_edit_players():
@@ -146,11 +182,20 @@ func _handle_space_pressed() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	var can_edit: bool = _game_manager.can_edit_players()
+	var is_playing: bool = _game_manager.current_phase == GameManager.GamePhase.PLAYING
 
-	# Left-click: select player or start dragging
+	# Left-click handling
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			var clicked_player := _get_player_at_position(get_global_mouse_position())
+
+			# During play: click on QB to start aiming
+			if is_playing and not _is_aiming:
+				if clicked_player and clicked_player.is_quarterback() and clicked_player.team == PlayerFigure.Team.HOME:
+					_start_aim(clicked_player)
+					return
+
+			# Pre-snap editing
 			if clicked_player and clicked_player == _selected_player and can_edit:
 				# Start dragging the selected player
 				_is_dragging = true
@@ -166,22 +211,36 @@ func _unhandled_input(event: InputEvent) -> void:
 				_update_player_initial_position(_selected_player)
 			_is_dragging = false
 
-	# Right-click to start/stop rotating selected player
+	# Right-click handling
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
-		if event.pressed and _selected_player and can_edit:
-			_is_rotating = true
-			_rotate_player_toward_mouse()
+		if event.pressed:
+			# If aiming, right-click throws the ball
+			if _is_aiming and _aiming_qb:
+				_throw_ball()
+				return
+
+			# If in kick mode during play, right-click kicks
+			if is_playing and _kick_mode:
+				_execute_kick()
+				return
+
+			# Otherwise, rotate selected player (pre-snap)
+			if _selected_player and can_edit:
+				_is_rotating = true
+				_rotate_player_toward_mouse()
 		else:
 			if _is_rotating and _selected_player:
 				_update_player_initial_position(_selected_player)
 			_is_rotating = false
 
-	# Mouse motion while dragging or rotating
+	# Mouse motion
 	if event is InputEventMouseMotion:
 		if _is_dragging and _selected_player and can_edit:
 			_drag_player_to_mouse()
 		if _is_rotating and _selected_player:
 			_rotate_player_toward_mouse()
+		if _is_aiming or _kick_mode:
+			_update_aim_indicator()
 
 
 func _rotate_player_toward_mouse() -> void:
@@ -242,6 +301,12 @@ func _update_ui() -> void:
 		}
 		var phase_name: String = phase_names.get(_game_manager.current_phase, "UNKNOWN")
 
+		# Add mode indicators
+		if _kick_mode:
+			phase_name = "KICK MODE (Right-click to kick, ESC to cancel)"
+		elif _is_aiming:
+			phase_name = "AIMING (Right-click to throw, ESC to cancel)"
+
 		# Add formation slot info
 		var slot_status := "*" if _formation_exists(_current_formation_slot) else ""
 		phase_name += " | Slot %d%s" % [_current_formation_slot, slot_status]
@@ -281,6 +346,10 @@ func _reset_players() -> void:
 	if _game_manager.current_phase == GameManager.GamePhase.PLAYING:
 		_game_manager.whistle()
 
+	# Cancel any aiming/kicking
+	_cancel_aim()
+	_cancel_kick_mode()
+
 	for player in $Players.get_children():
 		if player in _initial_positions:
 			var data: Dictionary = _initial_positions[player]
@@ -298,6 +367,9 @@ func _reset_players() -> void:
 			player.sleeping = false
 			# Reset base direction (drifts during play)
 			player.base_direction = data["base_direction"]
+
+	# Reset ball and play state
+	_game_manager.reset_play_state()
 
 	# Ready for next play
 	_game_manager.ready_for_next_play()
@@ -452,3 +524,107 @@ func _on_curve_changed(value: float) -> void:
 	if _selected_player:
 		_selected_player.base_curve = deg_to_rad(value)
 		_curve_label.text = "Curve: %.1f°/s" % value
+
+
+# ========== PASSING MECHANICS ==========
+
+func _start_aim(qb: PlayerFigure) -> void:
+	_is_aiming = true
+	_aiming_qb = qb
+	_aim_indicator.visible = true
+	_update_aim_indicator()
+
+
+func _cancel_aim() -> void:
+	_is_aiming = false
+	_aiming_qb = null
+	_aim_indicator.visible = false
+
+
+func _update_aim_indicator() -> void:
+	if not _aim_indicator:
+		return
+
+	var start_pos: Vector2
+	if _is_aiming and _aiming_qb:
+		start_pos = _aiming_qb.global_position
+		_aim_indicator.default_color = Color(1.0, 0.5, 0.0, 0.8)  # Orange for passing
+	elif _kick_mode:
+		start_pos = _kick_position
+		_aim_indicator.default_color = Color(0.0, 0.8, 1.0, 0.8)  # Cyan for kicking
+	else:
+		_aim_indicator.visible = false
+		return
+
+	var end_pos := get_global_mouse_position()
+	_aim_indicator.clear_points()
+	_aim_indicator.add_point(start_pos)
+	_aim_indicator.add_point(end_pos)
+
+	# Show power indicator (distance)
+	var distance := start_pos.distance_to(end_pos)
+	var power := clampf(distance, 100.0, 400.0)
+	var power_pct := (power - 100.0) / 300.0 * 100.0
+	# Visual feedback: thicker line = more power
+	_aim_indicator.width = 2.0 + power_pct / 25.0
+
+
+func _throw_ball() -> void:
+	if not _aiming_qb or not _game_manager:
+		return
+
+	var target := get_global_mouse_position()
+	var distance := _aiming_qb.global_position.distance_to(target)
+	var power := clampf(distance, 200.0, 600.0)
+
+	_game_manager.throw_pass(_aiming_qb, target, power)
+	_cancel_aim()
+
+
+# ========== KICKING MECHANICS ==========
+
+func _enter_kick_mode() -> void:
+	_kick_mode = true
+	# Find QB position for kick origin
+	for player in $Players.get_children():
+		if player is PlayerFigure and player.is_quarterback() and player.team == PlayerFigure.Team.HOME:
+			_kick_position = player.global_position + Vector2(0, 50)  # Behind QB
+			break
+	_aim_indicator.visible = true
+	_update_aim_indicator()
+	_update_ui()
+
+
+func _cancel_kick_mode() -> void:
+	_kick_mode = false
+	_aim_indicator.visible = false
+	_update_ui()
+
+
+func _execute_kick() -> void:
+	if not _game_manager:
+		return
+
+	var target := get_global_mouse_position()
+	var distance := _kick_position.distance_to(target)
+	var power := clampf(distance, 300.0, 800.0)
+
+	_game_manager.kick(_kick_position, target, power, PlayerFigure.Team.HOME)
+	_cancel_kick_mode()
+
+
+# ========== PASS RESULT HANDLERS ==========
+
+func _on_pass_complete(receiver: PlayerFigure) -> void:
+	print("Pass complete to %s!" % receiver.name)
+	_update_ui()
+
+
+func _on_pass_incomplete(reason: String) -> void:
+	print("Incomplete pass: %s" % reason)
+	_update_ui()
+
+
+func _on_pass_intercepted(interceptor: PlayerFigure) -> void:
+	print("INTERCEPTION by %s!" % interceptor.name)
+	_update_ui()

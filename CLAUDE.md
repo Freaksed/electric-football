@@ -27,14 +27,16 @@ The original physical game works by:
     main.tscn           # Main game scene
     field.tscn          # Football field
     player.tscn         # Individual player figure
+    ball.tscn           # Football for passing/kicking
     ui/                 # UI scenes
 /scripts/
-    field.gd            # Field rendering, yard lines, LOS display
+    field.gd            # Field rendering, yard lines, LOS display, goal posts
     player.gd           # Player figure with base configuration
+    ball.gd             # Football entity for passing/kicking
     vibration_controller.gd  # Autoload singleton for vibration physics
-    game_manager.gd     # Game state, phases, downs tracking
+    game_manager.gd     # Game state, phases, downs, ball tracking
     formation.gd        # Formation save/load resource
-    main.gd             # Main controller, input handling, UI
+    main.gd             # Main controller, input handling, UI, passing/kicking
 /assets/
     /sprites/
     /audio/
@@ -102,11 +104,16 @@ Use `RigidBody2D` for natural collision response. Each player has:
 - [x] Line of scrimmage indicator (blue) and first down marker (yellow)
 - [x] Snap mechanic with game phases (PRE_SNAP → PLAYING → PLAY_OVER)
 
-### Phase 4: Passing & Kicking
-- [ ] TTQB passing mechanic (aim, power, release)
-- [ ] Ball entity with physics
-- [ ] Catch detection
-- [ ] Kicking/punting with field goals
+### Phase 4: Passing & Kicking ✓ COMPLETE
+- [x] Ball entity with physics (RigidBody2D, collision detection)
+- [x] QB passing mechanic (click QB to aim, right-click to throw)
+- [x] Power-based throwing (distance determines throw power)
+- [x] Catch detection (eligible receivers: WR, RB, QB)
+- [x] Interception detection (defensive players)
+- [x] Incomplete pass detection (timeout, out of bounds, stopped)
+- [x] Kicking mechanic (K key, aim and power)
+- [x] Goal posts on field (visual + detection positions)
+- [x] Visual aim indicator (orange for passing, cyan for kicking)
 
 ### Phase 5: Game Rules & Flow
 - [ ] Downs, distance, scoring
@@ -163,9 +170,9 @@ godot --headless --export-release "Linux/X11" build/electric_football.x86_64
 
 ## Current Status
 
-**Phases 1-3 complete** — Core gameplay loop functional with vibration physics, 11v11 players, formation management (10 presets + 9 save slots), line of scrimmage, and snap mechanic.
+**Phases 1-4 complete** — Core gameplay loop functional with vibration physics, 11v11 players, formation management (10 presets + 9 save slots), line of scrimmage, snap mechanic, QB passing, and kicking.
 
-**Next up: Phase 4** — Passing & Kicking (TTQB mechanics, ball entity, catch detection).
+**Next up: Phase 5** — Game Rules & Flow (downs, distance, scoring, turnovers).
 
 ## Controls
 
@@ -176,6 +183,7 @@ godot --headless --export-release "Linux/X11" build/electric_football.x86_64
 | SPACE (play over) | Ready for next play |
 | R | Reset players to formation, ready for snap |
 | Q | Quit game |
+| ESC | Cancel aiming/kick mode, or deselect player |
 | F5 | Save current formation to selected slot |
 | F9 | Load formation from selected slot |
 | 1-9 | Select formation slot (shown in UI with * if saved) |
@@ -183,17 +191,40 @@ godot --headless --export-release "Linux/X11" build/electric_football.x86_64
 | Ctrl+1-5 | Load defense preset (4-3, 3-4, Nickel, 46, Goal Line) |
 | UP | Move line of scrimmage toward away end zone (-5 yards) |
 | DOWN | Move line of scrimmage toward home end zone (+5 yards) |
+| K (pre-snap) | Enter kick mode |
 | Click | Select player |
 | Left-drag (selected) | Move player position (pre-snap only) |
 | Right-drag (selected) | Rotate player direction (pre-snap only) |
+| Click QB (playing) | Enter aim mode for passing |
+| Right-click (aiming) | Throw ball toward mouse position |
+| Right-click (kick mode) | Kick ball toward mouse position |
 | Sliders | Adjust vibration frequency/amplitude |
 | Sliders (selected) | Adjust player speed/curve |
 
 ## Game Flow
 
-1. **PRE-SNAP**: Position players, adjust formations. Press SPACE to snap.
-2. **PLAYING**: Ball is live, players vibrate. Press SPACE to whistle.
-3. **PLAY OVER**: Play ended. Press R to reset for next play.
+1. **PRE-SNAP**: Position players, adjust formations. Press SPACE to snap, or K to enter kick mode.
+2. **PLAYING**: Ball is live, players vibrate. Click QB to aim pass, right-click to throw. Press SPACE to whistle.
+3. **PLAY OVER**: Play ended (tackle, incomplete pass, or whistle). Press R to reset for next play.
+
+## Passing System
+
+- During PLAYING phase, click on the home team's QB (red, diamond shape) to enter aim mode
+- An orange aim line shows the throw trajectory from QB to mouse cursor
+- Line thickness indicates throw power (based on distance)
+- Right-click to throw the ball
+- Ball travels toward target with physics-based movement
+- Eligible receivers (WR, RB, QB) on same team can catch the pass
+- Defensive players intercepting the ball results in turnover
+- Incomplete if: ball goes out of bounds, stops moving, or times out (2 seconds)
+
+## Kicking System
+
+- Press K during PRE_SNAP to enter kick mode
+- A cyan aim line appears from behind the QB position
+- Right-click to kick after the snap
+- Ball travels in a parabolic arc (simulated height with scale)
+- Goal posts are visible on both end zones for field goal attempts
 
 ## Preset Formations
 

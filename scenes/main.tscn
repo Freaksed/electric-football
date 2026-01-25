@@ -1,0 +1,246 @@
+[gd_scene load_steps=5 format=3 uid="uid://cw7m3qax5k2nl"]
+
+[ext_resource type="PackedScene" uid="uid://b5kx8m2n7qp4r" path="res://scenes/field.tscn" id="1_field"]
+[ext_resource type="PackedScene" uid="uid://dg8k4xf2q2h3l" path="res://scenes/player.tscn" id="2_player"]
+[ext_resource type="Script" path="res://scripts/game_manager.gd" id="3_game_manager"]
+[ext_resource type="Script" path="res://scripts/main.gd" id="4_main"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("4_main")
+
+[node name="GameManager" type="Node" parent="."]
+script = ExtResource("3_game_manager")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(260, 500)
+zoom = Vector2(1.0, 1.0)
+
+[node name="Field" parent="." instance=ExtResource("1_field")]
+position = Vector2(0, 0)
+
+[node name="Players" type="Node2D" parent="."]
+
+; === OFFENSE (Home Team - Red) - I-Formation ===
+
+; Offensive Line (5)
+[node name="OL_LT" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(164, 510)
+team = 0
+role = 0
+base_direction = -1.57
+
+[node name="OL_LG" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(212, 510)
+team = 0
+role = 0
+base_direction = -1.57
+
+[node name="OL_C" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(260, 510)
+team = 0
+role = 0
+base_direction = -1.57
+
+[node name="OL_RG" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(308, 510)
+team = 0
+role = 0
+base_direction = -1.57
+
+[node name="OL_RT" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(356, 510)
+team = 0
+role = 0
+base_direction = -1.57
+
+; Tight End
+[node name="OFF_TE" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(404, 510)
+team = 0
+role = 1
+base_direction = -1.57
+
+; Wide Receivers (2)
+[node name="OFF_WR_L" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(80, 510)
+team = 0
+role = 1
+base_direction = -1.57
+
+[node name="OFF_WR_R" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(440, 510)
+team = 0
+role = 1
+base_direction = -1.57
+
+; Quarterback
+[node name="OFF_QB" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(260, 560)
+team = 0
+role = 2
+base_direction = -1.57
+
+; Fullback
+[node name="OFF_FB" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(260, 610)
+team = 0
+role = 3
+base_direction = -1.57
+
+; Halfback / Running Back
+[node name="OFF_HB" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(260, 660)
+team = 0
+role = 3
+base_direction = -1.57
+
+; === DEFENSE (Away Team - Blue) - 4-3 ===
+
+; Defensive Line (4)
+[node name="DL_LE" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(180, 490)
+team = 1
+role = 0
+base_direction = 1.57
+
+[node name="DL_DT1" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(230, 490)
+team = 1
+role = 0
+base_direction = 1.57
+
+[node name="DL_DT2" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(290, 490)
+team = 1
+role = 0
+base_direction = 1.57
+
+[node name="DL_RE" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(340, 490)
+team = 1
+role = 0
+base_direction = 1.57
+
+; Linebackers (3)
+[node name="DEF_LOLB" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(160, 440)
+team = 1
+role = 4
+base_direction = 1.57
+
+[node name="DEF_MLB" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(260, 440)
+team = 1
+role = 4
+base_direction = 1.57
+
+[node name="DEF_ROLB" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(360, 440)
+team = 1
+role = 4
+base_direction = 1.57
+
+; Defensive Backs (4)
+[node name="DEF_CB_L" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(80, 420)
+team = 1
+role = 5
+base_direction = 1.57
+
+[node name="DEF_CB_R" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(440, 420)
+team = 1
+role = 5
+base_direction = 1.57
+
+[node name="DEF_FS" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(220, 360)
+team = 1
+role = 5
+base_direction = 1.57
+
+[node name="DEF_SS" parent="Players" instance=ExtResource("2_player")]
+position = Vector2(300, 360)
+team = 1
+role = 5
+base_direction = 1.57
+
+; === UI ===
+
+[node name="DebugUI" type="CanvasLayer" parent="."]
+
+[node name="VBoxContainer" type="VBoxContainer" parent="DebugUI"]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 300.0
+offset_bottom = 200.0
+
+[node name="Title" type="Label" parent="DebugUI/VBoxContainer"]
+text = "Electric Football Debug"
+
+[node name="VibrationStatus" type="Label" parent="DebugUI/VBoxContainer"]
+text = "Vibration: OFF"
+
+[node name="Instructions" type="Label" parent="DebugUI/VBoxContainer"]
+text = "SPACE - Snap/Whistle | R - Reset | Q - Quit
+F5 - Save | F9 - Load | 1-9 - Slot | Shift+1-5 - Offense | Ctrl+1-5 - Defense
+Click - Select | Drag - Move | Right-drag - Rotate"
+
+[node name="ScrimmageLabel" type="Label" parent="DebugUI/VBoxContainer"]
+text = "LOS: 50 yd | 1st & 10"
+
+[node name="FrequencyLabel" type="Label" parent="DebugUI/VBoxContainer"]
+text = "Frequency: 60 Hz"
+
+[node name="FrequencySlider" type="HSlider" parent="DebugUI/VBoxContainer"]
+custom_minimum_size = Vector2(200, 0)
+min_value = 10.0
+max_value = 120.0
+value = 60.0
+
+[node name="AmplitudeLabel" type="Label" parent="DebugUI/VBoxContainer"]
+text = "Amplitude: 50"
+
+[node name="AmplitudeSlider" type="HSlider" parent="DebugUI/VBoxContainer"]
+custom_minimum_size = Vector2(200, 0)
+min_value = 10.0
+max_value = 150.0
+value = 50.0
+
+[node name="PlayerPanel" type="VBoxContainer" parent="DebugUI"]
+visible = false
+offset_left = 20.0
+offset_top = 220.0
+offset_right = 300.0
+offset_bottom = 420.0
+
+[node name="PlayerLabel" type="Label" parent="DebugUI/PlayerPanel"]
+text = "Selected: None"
+
+[node name="DirectionLabel" type="Label" parent="DebugUI/PlayerPanel"]
+text = "Direction: 0°"
+
+[node name="DirectionSlider" type="HSlider" parent="DebugUI/PlayerPanel"]
+custom_minimum_size = Vector2(200, 0)
+min_value = -180.0
+max_value = 180.0
+value = 0.0
+
+[node name="SpeedLabel" type="Label" parent="DebugUI/PlayerPanel"]
+text = "Speed: 1.0"
+
+[node name="SpeedSlider" type="HSlider" parent="DebugUI/PlayerPanel"]
+custom_minimum_size = Vector2(200, 0)
+min_value = 0.1
+max_value = 3.0
+step = 0.1
+value = 1.0
+
+[node name="CurveLabel" type="Label" parent="DebugUI/PlayerPanel"]
+text = "Curve: 0°/s"
+
+[node name="CurveSlider" type="HSlider" parent="DebugUI/PlayerPanel"]
+custom_minimum_size = Vector2(200, 0)
+min_value = -90.0
+max_value = 90.0
+value = 0.0

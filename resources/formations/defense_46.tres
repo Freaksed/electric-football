@@ -1,0 +1,86 @@
+[gd_resource type="Resource" script_class="Formation" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/formation.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+formation_name = "46 Defense"
+line_of_scrimmage = 50
+players = [{
+"name": "DL_LE",
+"position_x": 164.0,
+"position_y": 490.0,
+"base_direction": 1.57,
+"base_speed": 1.1,
+"base_curve": 0.0
+}, {
+"name": "DL_DT1",
+"position_x": 212.0,
+"position_y": 490.0,
+"base_direction": 1.57,
+"base_speed": 1.0,
+"base_curve": 0.0
+}, {
+"name": "DL_DT2",
+"position_x": 308.0,
+"position_y": 490.0,
+"base_direction": 1.57,
+"base_speed": 1.0,
+"base_curve": 0.0
+}, {
+"name": "DL_RE",
+"position_x": 356.0,
+"position_y": 490.0,
+"base_direction": 1.57,
+"base_speed": 1.1,
+"base_curve": 0.0
+}, {
+"name": "DEF_LOLB",
+"position_x": 260.0,
+"position_y": 490.0,
+"base_direction": 1.57,
+"base_speed": 1.0,
+"base_curve": 0.0
+}, {
+"name": "DEF_MLB",
+"position_x": 260.0,
+"position_y": 440.0,
+"base_direction": 1.57,
+"base_speed": 1.0,
+"base_curve": 0.0
+}, {
+"name": "DEF_ROLB",
+"position_x": 380.0,
+"position_y": 450.0,
+"base_direction": 1.57,
+"base_speed": 1.1,
+"base_curve": 0.0
+}, {
+"name": "DEF_CB_L",
+"position_x": 80.0,
+"position_y": 450.0,
+"base_direction": 1.57,
+"base_speed": 1.2,
+"base_curve": 0.0
+}, {
+"name": "DEF_CB_R",
+"position_x": 440.0,
+"position_y": 450.0,
+"base_direction": 1.57,
+"base_speed": 1.2,
+"base_curve": 0.0
+}, {
+"name": "DEF_FS",
+"position_x": 180.0,
+"position_y": 380.0,
+"base_direction": 1.57,
+"base_speed": 1.2,
+"base_curve": 0.0
+}, {
+"name": "DEF_SS",
+"position_x": 340.0,
+"position_y": 380.0,
+"base_direction": 1.57,
+"base_speed": 1.2,
+"base_curve": 0.0
+}]

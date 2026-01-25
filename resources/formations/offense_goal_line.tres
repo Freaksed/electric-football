@@ -1,0 +1,86 @@
+[gd_resource type="Resource" script_class="Formation" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/formation.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+formation_name = "Goal Line"
+line_of_scrimmage = 50
+players = [{
+"name": "OL_LT",
+"position_x": 164.0,
+"position_y": 510.0,
+"base_direction": -1.57,
+"base_speed": 1.0,
+"base_curve": 0.0
+}, {
+"name": "OL_LG",
+"position_x": 212.0,
+"position_y": 510.0,
+"base_direction": -1.57,
+"base_speed": 1.0,
+"base_curve": 0.0
+}, {
+"name": "OL_C",
+"position_x": 260.0,
+"position_y": 510.0,
+"base_direction": -1.57,
+"base_speed": 1.0,
+"base_curve": 0.0
+}, {
+"name": "OL_RG",
+"position_x": 308.0,
+"position_y": 510.0,
+"base_direction": -1.57,
+"base_speed": 1.0,
+"base_curve": 0.0
+}, {
+"name": "OL_RT",
+"position_x": 356.0,
+"position_y": 510.0,
+"base_direction": -1.57,
+"base_speed": 1.0,
+"base_curve": 0.0
+}, {
+"name": "OFF_TE",
+"position_x": 404.0,
+"position_y": 510.0,
+"base_direction": -1.57,
+"base_speed": 1.0,
+"base_curve": 0.0
+}, {
+"name": "OFF_WR_L",
+"position_x": 116.0,
+"position_y": 510.0,
+"base_direction": -1.57,
+"base_speed": 1.0,
+"base_curve": 0.0
+}, {
+"name": "OFF_WR_R",
+"position_x": 452.0,
+"position_y": 510.0,
+"base_direction": -1.57,
+"base_speed": 1.0,
+"base_curve": 0.0
+}, {
+"name": "OFF_QB",
+"position_x": 260.0,
+"position_y": 545.0,
+"base_direction": -1.57,
+"base_speed": 1.0,
+"base_curve": 0.0
+}, {
+"name": "OFF_FB",
+"position_x": 260.0,
+"position_y": 580.0,
+"base_direction": -1.57,
+"base_speed": 1.2,
+"base_curve": 0.0
+}, {
+"name": "OFF_HB",
+"position_x": 260.0,
+"position_y": 615.0,
+"base_direction": -1.57,
+"base_speed": 1.3,
+"base_curve": 0.0
+}]

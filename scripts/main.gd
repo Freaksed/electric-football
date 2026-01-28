@@ -6,6 +6,7 @@ const BallScene := preload("res://scenes/ball.tscn")
 
 @onready var _vibration: Node = get_node("/root/VibrationController")
 @onready var _game_manager: GameManager = $GameManager
+@onready var _field: Node = $Field
 @onready var _vibration_status: Label = $DebugUI/VBoxContainer/VibrationStatus
 @onready var _scrimmage_label: Label = $DebugUI/VBoxContainer/ScrimmageLabel
 @onready var _frequency_label: Label = $DebugUI/VBoxContainer/FrequencyLabel
@@ -108,7 +109,16 @@ func _ready() -> void:
 		_game_manager.pass_complete.connect(_on_pass_complete)
 		_game_manager.pass_incomplete.connect(_on_pass_incomplete)
 		_game_manager.pass_intercepted.connect(_on_pass_intercepted)
+		_game_manager.score_changed.connect(_on_score_changed)
+		_game_manager.possession_changed.connect(_on_possession_changed)
+		_game_manager.touchdown_scored.connect(_on_touchdown_scored)
+		_game_manager.field_goal_scored.connect(_on_field_goal_scored)
+		_game_manager.safety_scored.connect(_on_safety_scored)
+		_game_manager.first_down_achieved.connect(_on_first_down)
+		_game_manager.turnover_on_downs.connect(_on_turnover_on_downs)
 		_game_manager.set_ball(_ball)
+		# Set field reference for yard-to-position conversion
+		_game_manager.field = _field
 
 	_update_ui()
 	_update_scrimmage_ui()
@@ -337,8 +347,13 @@ func _update_scrimmage_ui() -> void:
 		var los := _game_manager.line_of_scrimmage
 		var down := _game_manager.current_down
 		var ytg := _game_manager.yards_to_go
+		var home_score := _game_manager.home_score
+		var away_score := _game_manager.away_score
+		var possession := _game_manager.possession
+		var poss_str := "HOME" if possession == PlayerFigure.Team.HOME else "AWAY"
+
 		var down_str := "%dst" % down if down == 1 else ("%dnd" % down if down == 2 else ("%drd" % down if down == 3 else "%dth" % down))
-		_scrimmage_label.text = "LOS: %d yd | %s & %d" % [los, down_str, ytg]
+		_scrimmage_label.text = "HOME %d - AWAY %d | %s ball | LOS: %d yd | %s & %d" % [home_score, away_score, poss_str, los, down_str, ytg]
 
 
 func _reset_players() -> void:
@@ -628,3 +643,44 @@ func _on_pass_incomplete(reason: String) -> void:
 func _on_pass_intercepted(interceptor: PlayerFigure) -> void:
 	print("INTERCEPTION by %s!" % interceptor.name)
 	_update_ui()
+	_update_scrimmage_ui()
+
+
+# ========== GAME RULES EVENT HANDLERS ==========
+
+func _on_score_changed(_home: int, _away: int) -> void:
+	_update_scrimmage_ui()
+
+
+func _on_possession_changed(team: PlayerFigure.Team) -> void:
+	var team_name := "HOME" if team == PlayerFigure.Team.HOME else "AWAY"
+	print(">>> POSSESSION: %s team now has the ball" % team_name)
+	_update_scrimmage_ui()
+
+
+func _on_touchdown_scored(team: PlayerFigure.Team) -> void:
+	var team_name := "HOME" if team == PlayerFigure.Team.HOME else "AWAY"
+	print("*** TOUCHDOWN! %s scores 6 points! ***" % team_name)
+	_update_scrimmage_ui()
+
+
+func _on_field_goal_scored(team: PlayerFigure.Team) -> void:
+	var team_name := "HOME" if team == PlayerFigure.Team.HOME else "AWAY"
+	print("*** FIELD GOAL! %s scores 3 points! ***" % team_name)
+	_update_scrimmage_ui()
+
+
+func _on_safety_scored(team: PlayerFigure.Team) -> void:
+	var team_name := "HOME" if team == PlayerFigure.Team.HOME else "AWAY"
+	print("*** SAFETY! %s scores 2 points! ***" % team_name)
+	_update_scrimmage_ui()
+
+
+func _on_first_down() -> void:
+	print(">>> FIRST DOWN!")
+	_update_scrimmage_ui()
+
+
+func _on_turnover_on_downs() -> void:
+	print(">>> TURNOVER ON DOWNS!")
+	_update_scrimmage_ui()

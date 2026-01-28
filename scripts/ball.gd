@@ -5,6 +5,7 @@ class_name FootballBall
 signal caught(player: PlayerFigure)
 signal incomplete(reason: String)
 signal intercepted(player: PlayerFigure)
+signal field_goal_made(team: PlayerFigure.Team)
 
 enum BallState { HELD, IN_FLIGHT, CAUGHT, INCOMPLETE, KICKED }
 
@@ -55,14 +56,16 @@ func _physics_process(delta: float) -> void:
 			_mark_incomplete("out_of_bounds")
 			return
 
+		# For kicks, check for field goal
+		if _is_kick:
+			_update_kick_arc(delta)
+			if _check_field_goal_scored():
+				return
+
 		# Check if ball stopped moving (incomplete pass)
 		if linear_velocity.length() < 10.0:
 			_mark_incomplete("stopped")
 			return
-
-		# For kicks, simulate arc by adjusting scale (visual only)
-		if _is_kick:
-			_update_kick_arc(delta)
 
 
 func _update_kick_arc(delta: float) -> void:
@@ -188,6 +191,40 @@ func check_field_goal(goal_y: float, upright_left_x: float, upright_right_x: flo
 	var sufficient_height := _kick_height > 20.0  # Must be elevated
 
 	return crossed_goal and within_uprights and sufficient_height
+
+
+## Automatically check for field goal during kick flight
+func _check_field_goal_scored() -> bool:
+	if not _is_kick or _kick_height < 15.0:
+		return false
+
+	# Goal post constants (from field.gd)
+	const GOAL_POST_LEFT_X: float = 520.0 / 2.0 - 40.0  # 220
+	const GOAL_POST_RIGHT_X: float = 520.0 / 2.0 + 40.0  # 300
+
+	var within_uprights := global_position.x >= GOAL_POST_LEFT_X and global_position.x <= GOAL_POST_RIGHT_X
+
+	# Check for field goal at either end zone
+	# HOME kicks toward away end zone (y < END_ZONE_DEPTH)
+	if _throwing_team == PlayerFigure.Team.HOME:
+		if global_position.y < END_ZONE_DEPTH and within_uprights:
+			_complete_field_goal(PlayerFigure.Team.HOME)
+			return true
+	else:
+		# AWAY kicks toward home end zone (y > FIELD_HEIGHT - END_ZONE_DEPTH)
+		if global_position.y > FIELD_HEIGHT - END_ZONE_DEPTH and within_uprights:
+			_complete_field_goal(PlayerFigure.Team.AWAY)
+			return true
+
+	return false
+
+
+## Complete a successful field goal
+func _complete_field_goal(team: PlayerFigure.Team) -> void:
+	state = BallState.CAUGHT  # Use CAUGHT state to stop movement
+	freeze = true
+	linear_velocity = Vector2.ZERO
+	field_goal_made.emit(team)
 
 
 ## Reset ball to held state.

@@ -13,9 +13,15 @@ signal pass_complete(receiver: PlayerFigure)
 signal pass_incomplete(reason: String)
 signal pass_intercepted(interceptor: PlayerFigure)
 signal kick_started(from: Vector2, target: Vector2)
+signal possession_changed(team: PlayerFigure.Team)
+signal touchdown_scored(team: PlayerFigure.Team)
+signal field_goal_scored(team: PlayerFigure.Team)
+signal safety_scored(team: PlayerFigure.Team)
+signal first_down_achieved()
+signal turnover_on_downs()
 
 enum GamePhase { SETUP, PRE_SNAP, PLAYING, PLAY_OVER, GAME_OVER }
-enum PlayResult { NONE, TACKLE, PASS_COMPLETE, PASS_INCOMPLETE, INTERCEPTION, TOUCHDOWN, FIELD_GOAL }
+enum PlayResult { NONE, TACKLE, PASS_COMPLETE, PASS_INCOMPLETE, INTERCEPTION, TOUCHDOWN, FIELD_GOAL, SAFETY }
 
 var _current_phase: GamePhase = GamePhase.PRE_SNAP
 
@@ -31,10 +37,29 @@ var current_phase: GamePhase:
 var home_score: int = 0
 var away_score: int = 0
 
+# Possession tracking (HOME offense starts by default)
+var _possession: PlayerFigure.Team = PlayerFigure.Team.HOME
+
+var possession: PlayerFigure.Team:
+	get:
+		return _possession
+	set(value):
+		if _possession != value:
+			_possession = value
+			possession_changed.emit(_possession)
+
 # Down and distance
 var current_down: int = 1
 var yards_to_go: int = 10
-var _line_of_scrimmage: int = 50  # Yard line (0-100, 0 = away end zone, 50 = midfield)
+var _line_of_scrimmage: int = 20  # Yard line (0-100, 0 = away end zone, 100 = home end zone)
+var _los_at_snap: int = 20  # LOS when play started (for yards gained calculation)
+
+# Field reference for position conversion
+var field: Node = null  # FootballField for y_to_yard() conversion
+
+# Field constants (duplicated for when field ref not available)
+const FIELD_HEIGHT: float = 1000.0
+const END_ZONE_DEPTH: float = 80.0
 
 ## Line of scrimmage yard line (0 = away end zone, 100 = home end zone)
 var line_of_scrimmage: int:
@@ -47,8 +72,13 @@ var line_of_scrimmage: int:
 
 ## Get the yard line where first down is achieved
 func get_first_down_line() -> int:
-	# First down line is toward the home end zone (higher y values)
-	return mini(_line_of_scrimmage + yards_to_go, 100)
+	# First down line depends on possession direction
+	# HOME offense moves toward yard 0 (away end zone)
+	# AWAY offense moves toward yard 100 (home end zone)
+	if _possession == PlayerFigure.Team.HOME:
+		return maxi(_line_of_scrimmage - yards_to_go, 0)
+	else:
+		return mini(_line_of_scrimmage + yards_to_go, 100)
 
 # Ball carrier tracking
 var _ball_carrier: PlayerFigure = null
@@ -93,6 +123,27 @@ func set_ball_carrier(player: PlayerFigure) -> void:
 func _on_ball_carrier_tackled(tackler: PlayerFigure) -> void:
 	if _vibration:
 		_vibration.stop_vibration()
+
+	# Get ball carrier's final position as yard line
+	var final_yard := _y_to_yard(_ball_carrier.global_position.y)
+
+	# Check for touchdown first
+	if _check_touchdown(final_yard):
+		_last_play_result = PlayResult.TOUCHDOWN
+		current_phase = GamePhase.PLAY_OVER
+		play_ended.emit("touchdown")
+		return
+
+	# Check for safety (tackled in own end zone)
+	if _check_safety(final_yard):
+		_last_play_result = PlayResult.SAFETY
+		current_phase = GamePhase.PLAY_OVER
+		play_ended.emit("safety")
+		return
+
+	# Normal tackle - process yards gained and down progression
+	_last_play_result = PlayResult.TACKLE
+	_process_play_result(final_yard)
 	current_phase = GamePhase.PLAY_OVER
 	play_ended.emit("tackle")
 
@@ -101,6 +152,9 @@ func _on_ball_carrier_tackled(tackler: PlayerFigure) -> void:
 func snap() -> bool:
 	if current_phase != GamePhase.PRE_SNAP:
 		return false
+
+	# Record LOS at snap for yards gained calculation
+	_los_at_snap = _line_of_scrimmage
 
 	if _vibration:
 		_vibration.start_vibration()
@@ -168,6 +222,7 @@ func set_ball(ball_entity: Node) -> void:
 		ball.caught.connect(_on_ball_caught)
 		ball.incomplete.connect(_on_ball_incomplete)
 		ball.intercepted.connect(_on_ball_intercepted)
+		ball.field_goal_made.connect(_on_field_goal_made)
 
 
 ## Called when QB throws the ball.
@@ -219,9 +274,20 @@ func _on_ball_incomplete(reason: String) -> void:
 
 func _on_ball_intercepted(player: PlayerFigure) -> void:
 	_last_play_result = PlayResult.INTERCEPTION
+	# Change possession immediately on interception
+	change_possession()
 	set_ball_carrier(player)
 	pass_intercepted.emit(player)
-	# Play continues with new ball carrier
+	# Play continues with new ball carrier - when tackled, they get ball where they are
+
+
+func _on_field_goal_made(team: PlayerFigure.Team) -> void:
+	_last_play_result = PlayResult.FIELD_GOAL
+	if _vibration:
+		_vibration.stop_vibration()
+	_score_field_goal(team)
+	current_phase = GamePhase.PLAY_OVER
+	play_ended.emit("field_goal")
 
 
 ## Get the last play result.
@@ -235,3 +301,185 @@ func reset_play_state() -> void:
 	_last_play_result = PlayResult.NONE
 	if ball:
 		ball.reset()
+
+
+# ========== POSITION CONVERSION ==========
+
+## Convert y position to yard line (0-100)
+## Returns: 0 = away goal line, 100 = home goal line
+func _y_to_yard(y: float) -> int:
+	if field and field.has_method("y_to_yard"):
+		return field.y_to_yard(y)
+	# Fallback calculation if no field reference
+	var playing_field_height := FIELD_HEIGHT - 2 * END_ZONE_DEPTH
+	var yard := ((y - END_ZONE_DEPTH) / playing_field_height) * 100.0
+	return clampi(int(yard), 0, 100)
+
+
+## Convert yard line to y position
+func _yard_to_y(yard_line: int) -> float:
+	if field and field.has_method("yard_to_y"):
+		return field.yard_to_y(yard_line)
+	# Fallback calculation
+	var playing_field_height := FIELD_HEIGHT - 2 * END_ZONE_DEPTH
+	return END_ZONE_DEPTH + (yard_line / 100.0) * playing_field_height
+
+
+# ========== SCORING DETECTION ==========
+
+## Check if ball carrier reached the opponent's end zone (touchdown)
+func _check_touchdown(final_yard: int) -> bool:
+	var carrier_y := _ball_carrier.global_position.y if _ball_carrier else FIELD_HEIGHT / 2.0
+
+	if _possession == PlayerFigure.Team.HOME:
+		# HOME offense scores at away end zone (y < END_ZONE_DEPTH, yard <= 0)
+		if carrier_y < END_ZONE_DEPTH:
+			_score_touchdown(PlayerFigure.Team.HOME)
+			return true
+	else:
+		# AWAY offense scores at home end zone (y > FIELD_HEIGHT - END_ZONE_DEPTH, yard >= 100)
+		if carrier_y > FIELD_HEIGHT - END_ZONE_DEPTH:
+			_score_touchdown(PlayerFigure.Team.AWAY)
+			return true
+	return false
+
+
+## Check if ball carrier was tackled in their own end zone (safety)
+func _check_safety(final_yard: int) -> bool:
+	var carrier_y := _ball_carrier.global_position.y if _ball_carrier else FIELD_HEIGHT / 2.0
+
+	if _possession == PlayerFigure.Team.HOME:
+		# HOME offense tackled in home end zone = safety for AWAY
+		if carrier_y > FIELD_HEIGHT - END_ZONE_DEPTH:
+			_score_safety(PlayerFigure.Team.AWAY)
+			return true
+	else:
+		# AWAY offense tackled in away end zone = safety for HOME
+		if carrier_y < END_ZONE_DEPTH:
+			_score_safety(PlayerFigure.Team.HOME)
+			return true
+	return false
+
+
+# ========== DOWN PROGRESSION ==========
+
+## Process the result of a play - update LOS, check first down, advance down
+func _process_play_result(final_yard: int) -> void:
+	var yards_gained := _calculate_yards_gained(final_yard)
+
+	# Update line of scrimmage to where ball carrier was tackled
+	_line_of_scrimmage = final_yard
+
+	# Check for first down
+	if _check_first_down(yards_gained, final_yard):
+		# First down achieved
+		current_down = 1
+		yards_to_go = 10
+		first_down_achieved.emit()
+	else:
+		# Subtract yards gained from yards_to_go
+		yards_to_go -= yards_gained
+		current_down += 1
+
+		# Check for turnover on downs
+		if current_down > 4:
+			_turnover_on_downs()
+			return
+
+	down_changed.emit(current_down, yards_to_go)
+	scrimmage_changed.emit(_line_of_scrimmage, get_first_down_line())
+
+
+## Calculate yards gained (positive = toward opponent's end zone)
+func _calculate_yards_gained(final_yard: int) -> int:
+	if _possession == PlayerFigure.Team.HOME:
+		# HOME moves toward yard 0, so yards gained = start - end
+		return _los_at_snap - final_yard
+	else:
+		# AWAY moves toward yard 100, so yards gained = end - start
+		return final_yard - _los_at_snap
+
+
+## Check if first down was achieved
+func _check_first_down(yards_gained: int, final_yard: int) -> bool:
+	if _possession == PlayerFigure.Team.HOME:
+		# HOME needs to reach or pass the first down line (lower yard values)
+		return final_yard <= get_first_down_line()
+	else:
+		# AWAY needs to reach or pass the first down line (higher yard values)
+		return final_yard >= get_first_down_line()
+
+
+## Handle turnover on downs - possession changes
+func _turnover_on_downs() -> void:
+	turnover_on_downs.emit()
+	change_possession()
+	# New team gets ball where it was
+	current_down = 1
+	yards_to_go = 10
+	down_changed.emit(current_down, yards_to_go)
+	scrimmage_changed.emit(_line_of_scrimmage, get_first_down_line())
+
+
+# ========== POSSESSION ==========
+
+## Change possession to the other team
+func change_possession() -> void:
+	if _possession == PlayerFigure.Team.HOME:
+		possession = PlayerFigure.Team.AWAY
+	else:
+		possession = PlayerFigure.Team.HOME
+
+
+# ========== SCORING ==========
+
+## Score a touchdown (6 points)
+func _score_touchdown(team: PlayerFigure.Team) -> void:
+	add_score(team, 6)
+	touchdown_scored.emit(team)
+	_setup_kickoff(team)
+
+
+## Score a field goal (3 points)
+func _score_field_goal(team: PlayerFigure.Team) -> void:
+	add_score(team, 3)
+	field_goal_scored.emit(team)
+	_setup_kickoff(team)
+
+
+## Score a safety (2 points to opponent, scored-on team kicks)
+func _score_safety(scoring_team: PlayerFigure.Team) -> void:
+	add_score(scoring_team, 2)
+	safety_scored.emit(scoring_team)
+
+	# The team that was scored on kicks from their own 20
+	var kicking_team := PlayerFigure.Team.AWAY if scoring_team == PlayerFigure.Team.HOME else PlayerFigure.Team.HOME
+	possession = kicking_team
+
+	# Set LOS to 20 yard line on kicking team's side
+	if kicking_team == PlayerFigure.Team.HOME:
+		_line_of_scrimmage = 80  # 20 yards from home goal line
+	else:
+		_line_of_scrimmage = 20  # 20 yards from away goal line
+
+	current_down = 1
+	yards_to_go = 10
+	down_changed.emit(current_down, yards_to_go)
+	scrimmage_changed.emit(_line_of_scrimmage, get_first_down_line())
+
+
+## Set up for kickoff after a score
+func _setup_kickoff(scoring_team: PlayerFigure.Team) -> void:
+	# The team that scored kicks off (opponent receives)
+	# For now, just change possession and set LOS to receiving team's 20
+	if scoring_team == PlayerFigure.Team.HOME:
+		possession = PlayerFigure.Team.AWAY
+		_line_of_scrimmage = 80  # AWAY starts at their 20 (yard 80 = 20 from home end zone)
+	else:
+		possession = PlayerFigure.Team.HOME
+		_line_of_scrimmage = 20  # HOME starts at their 20 (yard 20 = 20 from away end zone)
+
+	current_down = 1
+	yards_to_go = 10
+	down_changed.emit(current_down, yards_to_go)
+	scrimmage_changed.emit(_line_of_scrimmage, get_first_down_line())

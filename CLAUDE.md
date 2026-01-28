@@ -115,10 +115,20 @@ Use `RigidBody2D` for natural collision response. Each player has:
 - [x] Goal posts on field (visual + detection positions)
 - [x] Visual aim indicator (orange for passing, cyan for kicking)
 
-### Phase 5: Game Rules & Flow
-- [ ] Downs, distance, scoring
-- [ ] Clock management (optional)
-- [ ] Turnovers and penalties
+### Phase 5: Game Rules & Flow ✓ COMPLETE
+- [x] Possession tracking (HOME/AWAY with automatic changes)
+- [x] LOS advancement based on ball carrier position at tackle
+- [x] Down progression (1st & 10, yards to go calculation)
+- [x] First down detection (auto-reset to 1st & 10)
+- [x] Touchdown detection (6 points when carrier enters opponent end zone)
+- [x] Safety detection (2 points when tackled in own end zone)
+- [x] Field goal detection (3 points when kick goes through uprights)
+- [x] Turnover on downs (possession change after 4th down failure)
+- [x] Interception handling (immediate possession change, play continues)
+- [x] Score display in UI (HOME X - AWAY X format)
+- [x] Possession indicator in UI
+- [ ] Clock management (optional - future)
+- [ ] Penalties (optional - future)
 
 ### Phase 6: Polish
 - [ ] Scoreboard UI
@@ -170,9 +180,9 @@ godot --headless --export-release "Linux/X11" build/electric_football.x86_64
 
 ## Current Status
 
-**Phases 1-4 complete** — Core gameplay loop functional with vibration physics, 11v11 players, formation management (10 presets + 9 save slots), line of scrimmage, snap mechanic, QB passing, and kicking.
+**Phases 1-5 complete** — Full gameplay loop with vibration physics, 11v11 players, formation management, passing/kicking, and automatic game rules (downs, scoring, possession changes).
 
-**Next up: Phase 5** — Game Rules & Flow (downs, distance, scoring, turnovers).
+**Next up: Phase 6** — Polish (scoreboard UI, sound design, visual refinement).
 
 ## Controls
 
@@ -205,7 +215,15 @@ godot --headless --export-release "Linux/X11" build/electric_football.x86_64
 
 1. **PRE-SNAP**: Position players, adjust formations. Press SPACE to snap, or K to enter kick mode.
 2. **PLAYING**: Ball is live, players vibrate. Click QB to aim pass, right-click to throw. Press SPACE to whistle.
-3. **PLAY OVER**: Play ended (tackle, incomplete pass, or whistle). Press R to reset for next play.
+3. **PLAY OVER**: Play ended (tackle, touchdown, safety, field goal, incomplete pass, or whistle). Press R to reset for next play.
+
+### Automatic Rules
+- **Downs**: Starts at 1st & 10. Gain 10+ yards for new first down, or advance down counter.
+- **Turnover on Downs**: After 4th down failure, possession changes to other team.
+- **Touchdown**: 6 points when ball carrier enters opponent's end zone. Scored team receives.
+- **Safety**: 2 points when ball carrier tackled in own end zone. Scored-on team kicks from own 20.
+- **Field Goal**: 3 points when kicked ball goes through uprights. Kicking team kicks off.
+- **Interception**: Possession changes immediately, play continues with interceptor as ball carrier.
 
 ## Passing System
 

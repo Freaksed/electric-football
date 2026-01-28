@@ -493,18 +493,20 @@ func _load_preset_formation(path: String) -> void:
 
 
 func _find_ball_carrier(team: PlayerFigure.Team) -> PlayerFigure:
-	# First try to find a QB
-	for player in $Players.get_children():
-		if player is PlayerFigure and player.team == team and player.is_quarterback():
-			return player
-	# Fall back to running back
-	for player in $Players.get_children():
-		if player is PlayerFigure and player.team == team and player.role == PlayerFigure.Role.RUNNING_BACK:
-			return player
-	# Fall back to any player on the team
-	for player in $Players.get_children():
-		if player is PlayerFigure and player.team == team:
-			return player
+	# Priority order for ball carrier selection
+	var priority_roles := [
+		PlayerFigure.Role.QUARTERBACK,
+		PlayerFigure.Role.RUNNING_BACK,
+		PlayerFigure.Role.RECEIVER,
+		PlayerFigure.Role.DEFENSIVE_BACK,  # For defense - like a returner
+		PlayerFigure.Role.LINEBACKER,
+		PlayerFigure.Role.LINEMAN,  # Last resort
+	]
+
+	for role in priority_roles:
+		for player in $Players.get_children():
+			if player is PlayerFigure and player.team == team and player.role == role:
+				return player
 	return null
 
 

@@ -31,3 +31,9 @@ visible = false
 points = PackedVector2Array(20, 0, 17.32, 10, 10, 17.32, 0, 20, -10, 17.32, -17.32, 10, -20, 0, -17.32, -10, -10, -17.32, 0, -20, 10, -17.32, 17.32, -10, 20, 0)
 width = 2.0
 default_color = Color(0, 1, 0, 1)
+
+[node name="BallIndicator" type="Line2D" parent="."]
+visible = false
+points = PackedVector2Array(25, 0, 21.65, 12.5, 12.5, 21.65, 0, 25, -12.5, 21.65, -21.65, 12.5, -25, 0, -21.65, -12.5, -12.5, -21.65, 0, -25, 12.5, -21.65, 21.65, -12.5, 25, 0)
+width = 4.0
+default_color = Color(1, 0.8, 0, 1)

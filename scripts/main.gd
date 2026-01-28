@@ -124,6 +124,11 @@ func _ready() -> void:
 	_update_scrimmage_ui()
 	_update_player_ui()
 
+	# Set initial ball carrier indicator
+	var carrier := _find_ball_carrier(_game_manager.possession)
+	if carrier:
+		_game_manager.set_ball_carrier(carrier)
+
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_accept"):  # Space bar
@@ -334,8 +339,13 @@ func _on_scrimmage_changed(_los: int, _first_down: int) -> void:
 	_update_scrimmage_ui()
 
 
-func _on_phase_changed(_phase: GameManager.GamePhase) -> void:
+func _on_phase_changed(phase: GameManager.GamePhase) -> void:
 	_update_ui()
+	# Set ball carrier indicator when entering PRE_SNAP
+	if phase == GameManager.GamePhase.PRE_SNAP:
+		var carrier := _find_ball_carrier(_game_manager.possession)
+		if carrier:
+			_game_manager.set_ball_carrier(carrier)
 
 
 func _on_play_started() -> void:

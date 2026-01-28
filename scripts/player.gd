@@ -24,12 +24,14 @@ var has_ball: bool:
 		return _has_ball
 	set(value):
 		_has_ball = value
+		_update_ball_indicator()
 
 # Reference to VibrationController (autoload)
 @onready var _vibration: Node = get_node("/root/VibrationController")
 @onready var _sprite: Polygon2D = $Sprite
 @onready var _direction_indicator: Line2D = $DirectionIndicator
 @onready var _selection_ring: Line2D = $SelectionRing
+@onready var _ball_indicator: Line2D = $BallIndicator
 
 
 func _ready() -> void:
@@ -129,6 +131,11 @@ func _physics_process(delta: float) -> void:
 func _update_visual_rotation() -> void:
 	_sprite.rotation = base_direction
 	_direction_indicator.rotation = base_direction
+
+
+func _update_ball_indicator() -> void:
+	if _ball_indicator:
+		_ball_indicator.visible = _has_ball
 
 
 func _on_body_entered(body: Node) -> void:

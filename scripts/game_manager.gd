@@ -97,6 +97,28 @@ func _ready() -> void:
 		_vibration.vibration_stopped.connect(_on_vibration_stopped)
 
 
+func _physics_process(_delta: float) -> void:
+	# Check for touchdown during play (ball carrier reaches end zone)
+	if current_phase == GamePhase.PLAYING and _ball_carrier:
+		var carrier_y := _ball_carrier.global_position.y
+
+		# HOME offense scores at away end zone (top, y < END_ZONE_DEPTH)
+		if _possession == PlayerFigure.Team.HOME and carrier_y < END_ZONE_DEPTH:
+			_score_touchdown_live(PlayerFigure.Team.HOME)
+		# AWAY offense scores at home end zone (bottom, y > FIELD_HEIGHT - END_ZONE_DEPTH)
+		elif _possession == PlayerFigure.Team.AWAY and carrier_y > FIELD_HEIGHT - END_ZONE_DEPTH:
+			_score_touchdown_live(PlayerFigure.Team.AWAY)
+
+
+func _score_touchdown_live(team: PlayerFigure.Team) -> void:
+	if _vibration:
+		_vibration.stop_vibration()
+	_last_play_result = PlayResult.TOUCHDOWN
+	_score_touchdown(team)
+	current_phase = GamePhase.PLAY_OVER
+	play_ended.emit("touchdown")
+
+
 func _on_vibration_started() -> void:
 	if current_phase == GamePhase.PRE_SNAP:
 		current_phase = GamePhase.PLAYING
@@ -476,6 +498,9 @@ func _score_safety(scoring_team: PlayerFigure.Team) -> void:
 
 ## Set up for kickoff after a score
 func _setup_kickoff(scoring_team: PlayerFigure.Team) -> void:
+	# Clear ball carrier for fresh start
+	set_ball_carrier(null)
+
 	# The team that scored kicks off (opponent receives)
 	# For now, just change possession and set LOS to receiving team's 20
 	if scoring_team == PlayerFigure.Team.HOME:

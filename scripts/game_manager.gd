@@ -365,6 +365,10 @@ func _check_safety(final_yard: int) -> bool:
 
 ## Process the result of a play - update LOS, check first down, advance down
 func _process_play_result(final_yard: int) -> void:
+	# Ensure vibration stops when down is processed
+	if _vibration:
+		_vibration.stop_vibration()
+
 	var yards_gained := _calculate_yards_gained(final_yard)
 
 	# Update line of scrimmage to where ball carrier was tackled
@@ -412,6 +416,8 @@ func _check_first_down(yards_gained: int, final_yard: int) -> bool:
 
 ## Handle turnover on downs - possession changes
 func _turnover_on_downs() -> void:
+	if _vibration:
+		_vibration.stop_vibration()
 	turnover_on_downs.emit()
 	change_possession()
 	# New team gets ball where it was

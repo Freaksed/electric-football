@@ -178,6 +178,10 @@ func _handle_space_pressed() -> void:
 	match _game_manager.current_phase:
 		GameManager.GamePhase.PRE_SNAP:
 			# Snap the ball - start the play
+			# Find the QB on the team with possession and set as ball carrier
+			var qb := _find_quarterback(_game_manager.possession)
+			if qb:
+				_game_manager.set_ball_carrier(qb)
 			_game_manager.snap()
 		GameManager.GamePhase.PLAYING:
 			# Blow the whistle - stop the play
@@ -476,6 +480,13 @@ func _load_preset_formation(path: String) -> void:
 	_update_ui()
 	_update_player_ui()
 	print("Loaded preset: %s (%d players)" % [formation.formation_name, count])
+
+
+func _find_quarterback(team: PlayerFigure.Team) -> PlayerFigure:
+	for player in $Players.get_children():
+		if player is PlayerFigure and player.team == team and player.is_quarterback():
+			return player
+	return null
 
 
 func _get_player_at_position(pos: Vector2) -> PlayerFigure:

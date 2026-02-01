@@ -29,6 +29,7 @@ var has_ball: bool:
 # Reference to VibrationController (autoload)
 @onready var _vibration: Node = get_node("/root/VibrationController")
 @onready var _sprite: Polygon2D = $Sprite
+@onready var _outline: Line2D = $Outline
 @onready var _direction_indicator: Line2D = $DirectionIndicator
 @onready var _selection_ring: Line2D = $SelectionRing
 @onready var _ball_indicator: Line2D = $BallIndicator
@@ -47,7 +48,11 @@ func _ready() -> void:
 		_sprite.color = Color(0.2, 0.4, 0.8)  # Blue
 
 	# Set shape based on role
-	_sprite.polygon = _get_shape_for_role()
+	var shape := _get_shape_for_role()
+	_sprite.polygon = shape
+
+	# Set outline to match shape
+	_update_outline(shape)
 
 	# Set initial rotation to match base_direction
 	_update_visual_rotation()
@@ -116,6 +121,9 @@ func _physics_process(delta: float) -> void:
 	# Always update visual rotation to match base_direction
 	_update_visual_rotation()
 
+	# Update ball carrier pulse effect
+	_update_ball_pulse(delta)
+
 	if not _vibration or not _vibration.is_vibrating:
 		return
 
@@ -130,12 +138,37 @@ func _physics_process(delta: float) -> void:
 
 func _update_visual_rotation() -> void:
 	_sprite.rotation = base_direction
+	if _outline:
+		_outline.rotation = base_direction
 	_direction_indicator.rotation = base_direction
 
+
+func _update_outline(shape: PackedVector2Array) -> void:
+	if not _outline:
+		return
+	# Create closed loop for outline
+	var outline_points := PackedVector2Array()
+	for point in shape:
+		outline_points.append(point)
+	# Close the loop
+	if shape.size() > 0:
+		outline_points.append(shape[0])
+	_outline.points = outline_points
+
+
+var _ball_pulse_time: float = 0.0
 
 func _update_ball_indicator() -> void:
 	if _ball_indicator:
 		_ball_indicator.visible = _has_ball
+		_ball_pulse_time = 0.0
+
+
+func _update_ball_pulse(delta: float) -> void:
+	if _ball_indicator and _has_ball:
+		_ball_pulse_time += delta * 4.0  # Pulse speed
+		var pulse := 0.7 + 0.3 * sin(_ball_pulse_time)
+		_ball_indicator.modulate.a = pulse
 
 
 func _on_body_entered(body: Node) -> void:

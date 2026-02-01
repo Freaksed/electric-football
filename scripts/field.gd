@@ -49,7 +49,9 @@ func _on_scrimmage_changed(los: int, first_down_line: int) -> void:
 func _draw() -> void:
 	_draw_field_surface()
 	_draw_end_zones()
+	_draw_end_zone_text()
 	_draw_yard_lines()
+	_draw_yard_numbers()
 	_draw_scrimmage_lines()
 	_draw_goal_posts()
 	_draw_boundary()
@@ -98,6 +100,50 @@ func _draw_yard_lines() -> void:
 		draw_line(Vector2(hash_x_left, y - hash_length/2), Vector2(hash_x_left, y + hash_length/2), LINE_COLOR, 1.0)
 		# Right hash
 		draw_line(Vector2(hash_x_right, y - hash_length/2), Vector2(hash_x_right, y + hash_length/2), LINE_COLOR, 1.0)
+
+
+func _draw_end_zone_text() -> void:
+	var font := ThemeDB.fallback_font
+	var font_size := 32
+
+	# Home end zone text (bottom) - rotated 180 degrees conceptually
+	var home_text := "HOME"
+	var home_text_size := font.get_string_size(home_text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
+	var home_x := (FIELD_WIDTH - home_text_size.x) / 2.0
+	var home_y := FIELD_HEIGHT - END_ZONE_DEPTH / 2.0 + home_text_size.y / 4.0
+	draw_string(font, Vector2(home_x, home_y), home_text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color(1, 1, 1, 0.6))
+
+	# Away end zone text (top)
+	var away_text := "AWAY"
+	var away_text_size := font.get_string_size(away_text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
+	var away_x := (FIELD_WIDTH - away_text_size.x) / 2.0
+	var away_y := END_ZONE_DEPTH / 2.0 + away_text_size.y / 4.0
+	draw_string(font, Vector2(away_x, away_y), away_text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size, Color(1, 1, 1, 0.6))
+
+
+func _draw_yard_numbers() -> void:
+	var font := ThemeDB.fallback_font
+	var font_size := 20
+
+	# Yard numbers: 10, 20, 30, 40, 50, 40, 30, 20, 10
+	# Draw on both left and right sides of field
+	var yard_labels := [10, 20, 30, 40, 50, 40, 30, 20, 10]
+
+	for i in range(yard_labels.size()):
+		var yard: int = yard_labels[i]
+		var yard_text := str(yard)
+		var text_size := font.get_string_size(yard_text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
+
+		# Y position for this yard line (i+1 because 0 is the goal line)
+		var y := END_ZONE_DEPTH + (i + 1) * YARD_LINE_SPACING + text_size.y / 4.0
+
+		# Left side number
+		var left_x := 15.0
+		draw_string(font, Vector2(left_x, y), yard_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 1, 1, 0.5))
+
+		# Right side number
+		var right_x := FIELD_WIDTH - 15.0 - text_size.x
+		draw_string(font, Vector2(right_x, y), yard_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color(1, 1, 1, 0.5))
 
 
 func _draw_scrimmage_lines() -> void:

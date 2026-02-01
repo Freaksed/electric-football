@@ -21,6 +21,12 @@ shape = SubResource("CircleShape2D_1")
 color = Color(0.8, 0.2, 0.2, 1)
 polygon = PackedVector2Array(-12, -15, 12, -15, 15, -8, 15, 8, 12, 15, -12, 15, -15, 8, -15, -8)
 
+[node name="Outline" type="Line2D" parent="."]
+points = PackedVector2Array(-12, -15, 12, -15, 15, -8, 15, 8, 12, 15, -12, 15, -15, 8, -15, -8, -12, -15)
+width = 2.0
+default_color = Color(0, 0, 0, 0.6)
+joint_mode = 2
+
 [node name="DirectionIndicator" type="Line2D" parent="."]
 points = PackedVector2Array(0, 0, 20, 0)
 width = 3.0
@@ -34,6 +40,7 @@ default_color = Color(0, 1, 0, 1)
 
 [node name="BallIndicator" type="Line2D" parent="."]
 visible = false
-points = PackedVector2Array(25, 0, 21.65, 12.5, 12.5, 21.65, 0, 25, -12.5, 21.65, -21.65, 12.5, -25, 0, -21.65, -12.5, -12.5, -21.65, 0, -25, 12.5, -21.65, 21.65, -12.5, 25, 0)
-width = 4.0
-default_color = Color(1, 0.8, 0, 1)
+z_index = 5
+points = PackedVector2Array(28, 0, 24.25, 14, 14, 24.25, 0, 28, -14, 24.25, -24.25, 14, -28, 0, -24.25, -14, -14, -24.25, 0, -28, 14, -24.25, 24.25, -14, 28, 0)
+width = 5.0
+default_color = Color(1, 0.84, 0, 1)

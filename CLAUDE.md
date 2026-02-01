@@ -34,6 +34,7 @@ The original physical game works by:
     player.gd           # Player figure with base configuration
     ball.gd             # Football entity for passing/kicking
     vibration_controller.gd  # Autoload singleton for vibration physics
+    audio_manager.gd    # Autoload singleton for procedural audio
     game_manager.gd     # Game state, phases, downs, ball tracking
     formation.gd        # Formation save/load resource
     main.gd             # Main controller, input handling, UI, passing/kicking
@@ -130,10 +131,10 @@ Use `RigidBody2D` for natural collision response. Each player has:
 - [ ] Clock management (optional - future)
 - [ ] Penalties (optional - future)
 
-### Phase 6: Polish
-- [ ] Scoreboard UI
-- [ ] Sound design (the iconic buzz!)
-- [ ] Visual style refinement
+### Phase 6: Polish ✓ COMPLETE
+- [x] Scoreboard UI (dedicated panel with large score, down & distance, possession arrow)
+- [x] Sound design (procedural buzz, whistle, touchdown/field goal celebration, kick/throw sounds)
+- [x] Visual style refinement (player outlines, yard line numbers, end zone text, pulsing ball indicator)
 
 ## Code Style Guidelines
 
@@ -180,9 +181,7 @@ godot --headless --export-release "Linux/X11" build/electric_football.x86_64
 
 ## Current Status
 
-**Phases 1-5 complete** — Full gameplay loop with vibration physics, 11v11 players, formation management, passing/kicking, and automatic game rules (downs, scoring, possession changes).
-
-**Next up: Phase 6** — Polish (scoreboard UI, sound design, visual refinement).
+**All phases complete!** Full gameplay loop with vibration physics, 11v11 players, formation management, passing/kicking, automatic game rules, and polish (scoreboard UI, procedural audio, visual refinements).
 
 ## Controls
 

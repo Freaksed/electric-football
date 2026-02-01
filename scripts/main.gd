@@ -4,9 +4,17 @@ extends Node2D
 const FormationScript := preload("res://scripts/formation.gd")
 const BallScene := preload("res://scenes/ball.tscn")
 
+@onready var _audio_manager: Node = get_node_or_null("/root/AudioManager")
+
 @onready var _vibration: Node = get_node("/root/VibrationController")
 @onready var _game_manager: GameManager = $GameManager
 @onready var _field: Node = $Field
+
+# Scoreboard UI
+@onready var _score_label: Label = $ScoreboardUI/ScoreboardPanel/VBoxContainer/ScoreLabel
+@onready var _down_label: Label = $ScoreboardUI/ScoreboardPanel/VBoxContainer/DownLabel
+
+# Debug UI
 @onready var _vibration_status: Label = $DebugUI/VBoxContainer/VibrationStatus
 @onready var _scrimmage_label: Label = $DebugUI/VBoxContainer/ScrimmageLabel
 @onready var _frequency_label: Label = $DebugUI/VBoxContainer/FrequencyLabel
@@ -369,6 +377,9 @@ func _update_scrimmage_ui() -> void:
 		var down_str := "%dst" % down if down == 1 else ("%dnd" % down if down == 2 else ("%drd" % down if down == 3 else "%dth" % down))
 		_scrimmage_label.text = "HOME %d - AWAY %d | %s ball | LOS: %d yd | %s & %d" % [home_score, away_score, poss_str, los, down_str, ytg]
 
+		# Update scoreboard UI
+		_update_scoreboard(home_score, away_score, down_str, ytg, los, possession)
+
 
 func _reset_players() -> void:
 	# Stop play if in progress
@@ -573,6 +584,41 @@ func _on_curve_changed(value: float) -> void:
 		_curve_label.text = "Curve: %.1f°/s" % value
 
 
+# ========== SCOREBOARD ==========
+
+func _update_scoreboard(home: int, away: int, down_str: String, ytg: int, los: int, possession: PlayerFigure.Team) -> void:
+	if _score_label:
+		_score_label.text = "HOME  %d  -  %d  AWAY" % [home, away]
+
+	if _down_label:
+		var arrow := "◄ " if possession == PlayerFigure.Team.HOME else " ►"
+		var poss_side := ""
+		if possession == PlayerFigure.Team.HOME:
+			poss_side = "◄ "
+		else:
+			poss_side = " ►"
+
+		# Format yard line display (e.g., "at OWN 30" or "at OPP 40")
+		var yard_display := ""
+		if possession == PlayerFigure.Team.HOME:
+			# HOME moves toward 0, so higher yards = own territory
+			if los >= 50:
+				yard_display = "OWN %d" % (100 - los)
+			else:
+				yard_display = "OPP %d" % los
+		else:
+			# AWAY moves toward 100, so lower yards = own territory
+			if los <= 50:
+				yard_display = "OWN %d" % los
+			else:
+				yard_display = "OPP %d" % (100 - los)
+
+		if possession == PlayerFigure.Team.HOME:
+			_down_label.text = "◄ %s & %d at %s" % [down_str, ytg, yard_display]
+		else:
+			_down_label.text = "%s & %d at %s ►" % [down_str, ytg, yard_display]
+
+
 # ========== PASSING MECHANICS ==========
 
 func _start_aim(qb: PlayerFigure) -> void:
@@ -624,6 +670,8 @@ func _throw_ball() -> void:
 	var distance := _aiming_qb.global_position.distance_to(target)
 	var power := clampf(distance, 200.0, 600.0)
 
+	if _audio_manager:
+		_audio_manager.play_kick()  # Use kick sound for throw
 	_game_manager.throw_pass(_aiming_qb, target, power)
 	_cancel_aim()
 
@@ -656,6 +704,8 @@ func _execute_kick() -> void:
 	var distance := _kick_position.distance_to(target)
 	var power := clampf(distance, 300.0, 800.0)
 
+	if _audio_manager:
+		_audio_manager.play_kick()
 	_game_manager.kick(_kick_position, target, power, PlayerFigure.Team.HOME)
 	_cancel_kick_mode()
 
@@ -693,12 +743,16 @@ func _on_possession_changed(team: PlayerFigure.Team) -> void:
 func _on_touchdown_scored(team: PlayerFigure.Team) -> void:
 	var team_name := "HOME" if team == PlayerFigure.Team.HOME else "AWAY"
 	print("*** TOUCHDOWN! %s scores 6 points! ***" % team_name)
+	if _audio_manager:
+		_audio_manager.play_touchdown()
 	_update_scrimmage_ui()
 
 
 func _on_field_goal_scored(team: PlayerFigure.Team) -> void:
 	var team_name := "HOME" if team == PlayerFigure.Team.HOME else "AWAY"
 	print("*** FIELD GOAL! %s scores 3 points! ***" % team_name)
+	if _audio_manager:
+		_audio_manager.play_touchdown()  # Same celebration sound
 	_update_scrimmage_ui()
 
 
